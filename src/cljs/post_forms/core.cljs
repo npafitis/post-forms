@@ -63,18 +63,19 @@
    [navbar]
    [(pages @(rf/subscribe [:page]))]])
 
+
 (defn left-panel []
-  [re-com/box
-   :size "auto"
-   :child (let [selected-tab-id (r/atom (:id (first left-panel-tabs-definition)))
-                change-tab #(reset! selected-tab-id %)]
-            [re-com/v-box
-             :children [[re-com/horizontal-tabs
-                         :model selected-tab-id
-                         :tabs left-panel-tabs-definition
-                         :on-change change-tab]
-                        [(left-panel-tabs @selected-tab-id)]
-                        ]])])
+  (let [selected-tab-id (r/atom (:id (first left-panel-tabs-definition)))
+        change-tab #(reset! selected-tab-id %)]
+    (fn []
+      [re-com/box
+       :size "auto"
+       :child [re-com/v-box
+               :children [[re-com/horizontal-tabs
+                           :model selected-tab-id
+                           :tabs left-panel-tabs-definition
+                           :on-change change-tab]
+                          [(left-panel-tabs @selected-tab-id)]]]])))
 
 (defn forms-view []
   [:div "Forms View"])
