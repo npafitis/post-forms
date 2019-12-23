@@ -10,6 +10,7 @@
    [post-forms.events]
    [reitit.core :as reitit]
    [re-com.core :as re-com]
+   [cljsjs.codemirror :as cm]
    [clojure.string :as string])
   (:import goog.History))
 
@@ -78,10 +79,17 @@
                           [(left-panel-tabs @selected-tab-id)]]]])))
 
 (defn forms-view []
-  [:div "Forms View"])
+  (fn []
+    [:div "Forms View"]))
 
 (defn swagger-view []
-  [:div "Swagger View"])
+  (r/create-class
+   {:reagent-render (fn [] [:textarea])
+    :component-did-mount (fn [this]
+                           (.fromTextArea js/CodeMirror
+                                          (r/dom-node this)
+                                          (clj->js {:mode "javascript"
+                                                    :lineNumbers true})))}))
 ;; -------------------------
 ;; Functionality
 (defn log [& args]
