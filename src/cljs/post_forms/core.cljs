@@ -72,6 +72,7 @@
       [re-com/box
        :size "auto"
        :child [re-com/v-box
+               :size "auto"
                :children [[re-com/horizontal-tabs
                            :model selected-tab-id
                            :tabs left-panel-tabs-definition
@@ -82,19 +83,35 @@
   (fn []
     [:div "Forms View"]))
 
+
+
 (defn swagger-view []
-  (fn []
-    (def cm-instance nil)
-    (r/create-class
-     {:reagent-render (fn [] [:textarea])
-      :component-will-unmount (fn [this] (.toTextArea cm-instance))
-      :component-did-mount #(set! (.fromTextArea
-                                   js/CodeMirror
-                                   (r/dom-node %)
-                                   (clj->js {:mode "javascript"
-                                             :lineNumbers true})))})))
+  (let [swagger-json (r/atom "{\"place\": \"holder\"}")]
+    (fn []
+      (r/create-class
+       {:reagent-render (fn [] [:textarea {:value @swagger-json
+                                           :on-change (fn [] (log "Do Nothing"))}])
+        :component-will-unmount #(.toTextArea swagger-cm-instance)
+        :component-did-mount #(do (set! swagger-cm-instance
+                                    (.fromTextArea
+                                     js/CodeMirror
+                                     (r/dom-node %)
+                                     (clj->js {:mode {:name "javascript" :json true}
+                                               :theme "material-darker"
+                                               :lineNumbers true})))
+                                  (.on swagger-cm-instance "change" (fn [editor] (on-swagger-json-change editor swagger-json))))}))))
+
+(defn on-swagger-json-change [editor swagger-json]
+  (reset! swagger-json (.getValue editor)))
+
 ;; -------------------------
 ;; Functionality
+(def swagger-cm-instance nil)
+
+(defn on-input-change [value atom]
+  (log "Input has changed")
+  (reset! atom (-> value .-target .-value)))
+
 (defn log [& args]
   (.apply js/console.log js/console (to-array args)))
 
