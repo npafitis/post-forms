@@ -92,14 +92,16 @@
        {:reagent-render (fn [] [:textarea {:value @swagger-json
                                            :on-change (fn [] (log "Do Nothing"))}])
         :component-will-unmount #(.toTextArea swagger-cm-instance)
-        :component-did-mount #(do (set! swagger-cm-instance
-                                    (.fromTextArea
-                                     js/CodeMirror
-                                     (r/dom-node %)
-                                     (clj->js {:mode {:name "javascript" :json true}
-                                               :theme "material-darker"
-                                               :lineNumbers true})))
-                                  (.on swagger-cm-instance "change" (fn [editor] (on-swagger-json-change editor swagger-json))))}))))
+        :component-did-mount (fn [this]
+                               (set! swagger-cm-instance
+                                     (.fromTextArea
+                                      js/CodeMirror
+                                      (r/dom-node this)
+                                      (clj->js {:mode {:name "javascript" :json true}
+                                                :theme "material-darker"
+                                                :lineNumbers true})))
+                               (.on swagger-cm-instance "change"
+                                    #(on-swagger-json-change % swagger-json)))}))))
 
 (defn on-swagger-json-change [editor swagger-json]
   (reset! swagger-json (.getValue editor)))
