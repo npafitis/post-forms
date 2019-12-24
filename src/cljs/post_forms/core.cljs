@@ -83,13 +83,16 @@
     [:div "Forms View"]))
 
 (defn swagger-view []
-  (r/create-class
-   {:reagent-render (fn [] [:textarea])
-    :component-did-mount (fn [this]
-                           (.fromTextArea js/CodeMirror
-                                          (r/dom-node this)
-                                          (clj->js {:mode "javascript"
-                                                    :lineNumbers true})))}))
+  (fn []
+    (def cm-instance nil)
+    (r/create-class
+     {:reagent-render (fn [] [:textarea])
+      :component-will-unmount (fn [this] (.toTextArea cm-instance))
+      :component-did-mount #(set! (.fromTextArea
+                                   js/CodeMirror
+                                   (r/dom-node %)
+                                   (clj->js {:mode "javascript"
+                                             :lineNumbers true})))})))
 ;; -------------------------
 ;; Functionality
 (defn log [& args]
