@@ -32,6 +32,7 @@
                  [reagent "0.9.0-rc3"]
                  [ring-webjars "0.2.0"]
                  [ring/ring-core "1.8.0"]
+                 [ring/ring-json "0.5.0"]
                  [ring/ring-defaults "0.3.2"]
                  [re-com "2.6.0"]
                  [cljsjs/codemirror "5.44.0-1"]

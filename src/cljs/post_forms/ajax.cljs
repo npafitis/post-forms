@@ -28,3 +28,8 @@
          conj
          (ajax/to-interceptor {:name "default headers"
                                :request default-headers})))
+
+(defn post-swagger-json [swagger-json handler]
+  (ajax/POST "/swagger/analyze"
+             {:body swagger-json
+              :handler handler}))

@@ -10,9 +10,8 @@
     [muuntaja.middleware :refer [wrap-format wrap-params]]
     [post-forms.config :refer [env]]
     [ring-ttl-session.core :refer [ttl-memory-store]]
-    [ring.middleware.defaults :refer [site-defaults wrap-defaults]])
-  
-           )
+    [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
+    [ring.middleware.defaults :refer [site-defaults wrap-defaults]]))
 
 (defn wrap-internal-error [handler]
   (fn [req]
@@ -46,4 +45,6 @@
         (-> site-defaults
             (assoc-in [:security :anti-forgery] false)
             (assoc-in  [:session :store] (ttl-memory-store (* 60 30)))))
-      wrap-internal-error))
+      wrap-internal-error
+      wrap-json-response
+      wrap-json-body))

@@ -1,15 +1,14 @@
 (ns post-forms.routes.swagger
   (:require [post-forms.middleware :as middleware]
-            [ring.util.http-response :as response]))
+            [ring.util.request :refer [body-string]]
+            [ring.util.response :refer [response]]
+            [ring.util.http-response :as http-response]))
 
-(defn analyze-swagger-handler []
-  (fn [_]
-    (->
-     (response/ok "ok")
-     (response/header "Content-Type" "text/plain; charset=utf-8"))))
+(defn analyze-swagger-handler [request]
+  (->
+   (http-response/ok {:foo "bar"})
+   (http-response/header "Content-Type" "text/plain; charset=utf-8")))
 
 (defn swagger-routes []
-  ["swagger"
-   {:middleware [middleware/wrap-csrf
-                 middleware/wrap-formats]}
+  ["/swagger"
    ["/analyze" {:post analyze-swagger-handler}]])

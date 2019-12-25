@@ -12,7 +12,8 @@
    [re-com.core :as re-com]
    [cljsjs.codemirror :as cm]
    [clojure.string :as string])
-  (:import goog.History))
+  (:import [goog.async Debouncer]
+           goog.History))
 
 (defn nav-link [uri title page]
   [:a.navbar-item
@@ -90,7 +91,7 @@
     (fn []
       (r/create-class
        {:reagent-render (fn [] [:textarea {:value @swagger-json
-                                           :on-change (fn [] (log "Do Nothing"))}])
+                                           :on-change #(constantly nil)}])
         :component-will-unmount #(.toTextArea swagger-cm-instance)
         :component-did-mount (fn [this]
                                (set! swagger-cm-instance
@@ -101,10 +102,14 @@
                                                 :theme "material-darker"
                                                 :lineNumbers true})))
                                (.on swagger-cm-instance "change"
-                                    #(on-swagger-json-change % swagger-json)))}))))
+                                    (debounce
+                                     #(on-swagger-json-change % swagger-json) 1000)))}))))
 
 (defn on-swagger-json-change [editor swagger-json]
-  (reset! swagger-json (.getValue editor)))
+  (ajax/post-swagger-json
+   (reset! swagger-json (.getValue editor))
+   (fn [response]
+     (log response))))
 
 ;; -------------------------
 ;; Functionality
@@ -113,6 +118,10 @@
 (defn on-input-change [value atom]
   (log "Input has changed")
   (reset! atom (-> value .-target .-value)))
+
+(defn debounce [f interval]
+  (let [dbnc (Debouncer. f interval)]
+    (fn [& args] (.apply (.-fire dbnc) dbnc (to-array args)))))
 
 (defn log [& args]
   (.apply js/console.log js/console (to-array args)))
