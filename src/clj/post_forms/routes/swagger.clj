@@ -8,6 +8,12 @@
 
 (def definitions (atom nil))
 
+(defn query? [parameter]
+  (= (parameter "in") "query"))
+
+(defn body? [parameter]
+  (= (parameter "in") "body"))
+
 (defn get-endpoints [swagger-json]
   (map-to-vector (swagger-json "paths")))
 
@@ -26,9 +32,7 @@
                   :validation-regex  "\\d+"}}}
      type)))
 
-
 (defn extract-parameter-field [parameter]
-  (prn "Extracting Parameter Form Field")
   (if (contains? parameter "schema")
     (if (contains? (parameter "schema") "$ref")
       (let [classname (->
@@ -44,24 +48,28 @@
 
 (defn extract-method-form [method]
   (let [method-key (key method)
-        method-val (val method)]
-    (prn "Extract Method Form")
+        method-val (val method)
+        parameters (method-val "parameters")]
     {method-key
-     (for [parameter (method-val "parameters")]
-       (extract-parameter-field parameter))}))
+     {:query-params (->>
+                     parameters
+                     (filter query?)
+                     (map extract-parameter-field))
+      :body (->>
+             parameters
+             (filter body?)
+             (map extract-parameter-field))}}))
 
 (defn analyze-endpoint-methods [path]
   (let [endpoint-key (first (keys path)) ;; endpoint-key is the string of the endpoint e.g "/foo/bar
         endpoint (path endpoint-key)]
     {endpoint-key
-     (for [method endpoint]
-       (extract-method-form method))}))
+     (map extract-method-form endpoint)}))
 
 (defn analyze-endpoints [swagger-json]
   (let [paths (get-endpoints swagger-json)]
     (reset! definitions (swagger-json "definitions"))
-    (for [path paths]
-      (analyze-endpoint-methods path))))
+    (map analyze-endpoint-methods paths)))
 
 (defn analyze-swagger-handler [request]
   (let [swagger-json (request :body)]
