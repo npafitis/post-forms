@@ -6,4 +6,4 @@
           (hash-map path (map path)))))
 
 (defn flatten-one-level [coll]
-  (mapcat  #(if (sequential? %) % [%]) coll))
+  (mapcat #(if (sequential? %) % [%]) coll))

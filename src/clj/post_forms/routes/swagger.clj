@@ -1,7 +1,6 @@
 (ns post-forms.routes.swagger
   (:require [post-forms.middleware :as middleware]
-            [post-forms.utils :refer [map-to-vector
-                                      flatten-one-level]]
+            [post-forms.utils :refer [map-to-vector]]
             [ring.util.request :refer [body-string]]
             [ring.util.response :refer [response]]
             [ring.util.http-response :as http-response]
@@ -70,7 +69,7 @@
     (if (contains? (parameter "schema") "$ref")
       (let [classname (get-definition-name (parameter "schema"))
             class (@definitions classname)]
-        (flatten-one-level (advanced-form-field class '())))
+        (advanced-form-field class '()))
       basic-body-form-field)
     (basic-parameter-field parameter (parameter "name"))))
 
