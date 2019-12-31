@@ -6,10 +6,19 @@
             [ring.util.http-response :as http-response]
             [clojure.string :as str]))
 
-(def definitions (atom nil))
+(declare advanced-form-field)
+
+(def definitions (atom nil)) ;; Might have issue if application is deployed and concurrent applications are made on
 
 (defn query? [parameter]
   (= (parameter "in") "query"))
+
+(defn get-definition-name [definition]
+  (->
+   definition
+   (get "$ref")
+   (str/split #"/")
+   (last)))
 
 (defn body? [parameter]
   (= (parameter "in") "body"))
@@ -17,34 +26,56 @@
 (defn get-endpoints [swagger-json]
   (map-to-vector (swagger-json "paths")))
 
-(defn advanced-form-field [class]
-  nil)
-
-(defn basic-form-field [parameter]
+(defn basic-parameter-field [parameter name]
   (let [type (parameter "type")
-        name (parameter "name")]
+        required (parameter "required")]
     ({"boolean" {:checkbox
-                 {:label name}}
-      "string" {"input-text"
-                {:label name}}
-      "integer" {"input-text"
                  {:label name
+                  :required (not (nil? required))}}
+      "string" {:input-text
+                {:label name
+                 :required (not (nil? required))}}
+      "integer" {:input-text
+                 {:label name
+                  :required (not (nil? required))
                   :validation-regex  "\\d+"}}}
      type)))
+
+(defn extract-property-field [visited-classes]
+  (fn [property]
+    (let [property-name (first (keys property))
+          property-value (property property-name)]
+      (cond
+        (contains? property-value "$ref") (let [classname (get-definition-name property-value)
+                                                class (@definitions classname)]
+                                            (if (not (some #(= classname %) visited-classes))
+                                              (advanced-form-field class (conj
+                                                                          visited-classes
+                                                                          classname))
+                                              {property-name {:ref classname}}))
+        (contains? property-value "type") (do
+                                            (prn property-name)
+                                            (prn property-value)
+                                            (prn
+                                             (basic-parameter-field property-value property-name))
+                                            (basic-parameter-field property-value property-name))
+        :else nil))))
+
+(defn advanced-form-field [class visited-classes]
+  (let [properties (map-to-vector (class "properties"))]
+    (map (extract-property-field visited-classes) properties)))
+
+(def basic-body-form-field
+  {:json {:label "Body"}})
 
 (defn extract-parameter-field [parameter]
   (if (contains? parameter "schema")
     (if (contains? (parameter "schema") "$ref")
-      (let [classname (->
-                       parameter
-                       (get "schema")
-                       (get "$ref")
-                       (str/split #"/")
-                       (last))
+      (let [classname (get-definition-name (parameter "schema"))
             class (@definitions classname)]
-        (advanced-form-field class))
-      nil)
-    (basic-form-field parameter)))
+        (first (advanced-form-field class '())))
+      basic-body-form-field)
+    (basic-parameter-field parameter (parameter "name"))))
 
 (defn extract-method-form [method]
   (let [method-key (key method)
