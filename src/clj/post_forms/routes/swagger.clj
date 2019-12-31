@@ -1,6 +1,7 @@
 (ns post-forms.routes.swagger
   (:require [post-forms.middleware :as middleware]
-            [post-forms.utils :refer [map-to-vector]]
+            [post-forms.utils :refer [map-to-vector
+                                      flatten-one-level]]
             [ring.util.request :refer [body-string]]
             [ring.util.response :refer [response]]
             [ring.util.http-response :as http-response]
@@ -45,21 +46,17 @@
   (fn [property]
     (let [property-name (first (keys property))
           property-value (property property-name)]
-      (cond
-        (contains? property-value "$ref") (let [classname (get-definition-name property-value)
-                                                class (@definitions classname)]
-                                            (if (not (some #(= classname %) visited-classes))
-                                              (advanced-form-field class (conj
-                                                                          visited-classes
-                                                                          classname))
-                                              {property-name {:ref classname}}))
-        (contains? property-value "type") (do
-                                            (prn property-name)
-                                            (prn property-value)
-                                            (prn
-                                             (basic-parameter-field property-value property-name))
-                                            (basic-parameter-field property-value property-name))
-        :else nil))))
+      (if (contains? property-value "$ref")
+        (let [classname (get-definition-name property-value)
+              class (@definitions classname)]
+          (if (not (some #(= classname %) visited-classes))
+            (advanced-form-field class (conj
+                                        visited-classes
+                                        classname))
+            {property-name {:ref classname}}))
+        (if (contains? property-value "type")
+          (basic-parameter-field property-value property-name)
+          nil)))))
 
 (defn advanced-form-field [class visited-classes]
   (let [properties (map-to-vector (class "properties"))]
@@ -73,7 +70,7 @@
     (if (contains? (parameter "schema") "$ref")
       (let [classname (get-definition-name (parameter "schema"))
             class (@definitions classname)]
-        (first (advanced-form-field class '())))
+        (flatten-one-level (advanced-form-field class '())))
       basic-body-form-field)
     (basic-parameter-field parameter (parameter "name"))))
 
