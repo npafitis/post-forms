@@ -31,13 +31,18 @@
         required (parameter "required")]
     ({"boolean" {:checkbox
                  {:label name
-                  :required (not (nil? required))}}
-      "string" {:input-text
-                {:label name
-                 :required (not (nil? required))}}
+                  :required required}}
+      "string" (if (contains? parameter "enum")
+                 {:dropdown
+                  {:label name
+                   :required required
+                   :options (parameter "enum")}}
+                 {:input-text
+                  {:label name
+                   :required required}})
       "integer" {:input-text
                  {:label name
-                  :required (not (nil? required))
+                  :required required
                   :validation-regex  "\\d+"}}}
      type)))
 
