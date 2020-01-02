@@ -9,8 +9,6 @@
 
 (declare advanced-form-field)
 
-(def definitions (atom nil)) ;; Might have issue if application is deployed and concurrent applications are made on
-
 (defn query? [parameter]
   (= (parameter "in") "query"))
 
@@ -50,68 +48,71 @@
                   :validation-regex  "\\d+"}}}
      type)))
 
-(defn extract-property-field [visited-classes]
+(defn extract-property-field [visited-classes definitions]
   (fn [property]
     (let [property-name (first (keys property))
           property-value (property property-name)]
       (if (contains? property-value "$ref")
         (let [classname (get-definition-name property-value)
-              class (@definitions classname)]
+              class (definitions classname)]
           (if (not (some #(= classname %) visited-classes))
             (advanced-form-field class (conj
                                         visited-classes
-                                        classname))
+                                        classname) definitions)
             {property-name {:ref classname}}))
         (if (contains? property-value "type")
           (basic-parameter-field property-value property-name)
           nil)))))
 
-(defn advanced-form-field [class visited-classes]
+(defn advanced-form-field [class visited-classes definitions]
   (let [properties (map-to-vector (class "properties"))]
-    (map (extract-property-field visited-classes) properties)))
+    (map (extract-property-field visited-classes definitions) properties)))
 
-(defn extract-parameter-field [parameter]
-  (if (contains? parameter "schema")
-    (if (contains? (parameter "schema") "$ref")
-      (let [classname (get-definition-name (parameter "schema"))
-            class (@definitions classname)]
-        {classname
-         (advanced-form-field class '())})
-      basic-body-form-field)
-    {(parameter "name")
-     (basic-parameter-field parameter (parameter "name"))}))
+(defn extract-parameter-field [definitions]
+  (fn [parameter]
+    (if (contains? parameter "schema")
+      (if (contains? (parameter "schema") "$ref")
+        (let [classname (get-definition-name (parameter "schema"))
+              class (definitions classname)]
+          {classname
+           (advanced-form-field class '() definitions)})
+        basic-body-form-field)
+      {(parameter "name")
+       (basic-parameter-field parameter (parameter "name"))})))
 
-(defn extract-method-form [method]
-  (let [method-key (key method)
-        method-val (val method)
-        parameters (method-val "parameters")]
-    {method-key
-     {:query-params (->>
-                     parameters
-                     (filter query?)
-                     (map extract-parameter-field))
-      :body (->>
-             parameters
-             (filter body?)
-             (map extract-parameter-field)
-             (flatten-one-level))}}))
+(defn extract-method-form [definitions]
+  (fn [method]
+    (let [method-key (key method)
+          method-val (val method)
+          parameters (method-val "parameters")]
+      {method-key
+       {:query-params (->>
+                       parameters
+                       (filter query?)
+                       (map (extract-parameter-field definitions)))
+        :body (->>
+               parameters
+               (filter body?)
+               (map (extract-parameter-field definitions))
+               (flatten-one-level))}})))
 
-(defn analyze-endpoint-methods [path]
-  (let [endpoint-key (first (keys path)) ;; endpoint-key is the string of the endpoint e.g "/foo/bar
-        endpoint (path endpoint-key)]
-    {endpoint-key
-     (map extract-method-form endpoint)}))
+(defn analyze-endpoint-methods [definitions]
+  (fn [path]
+    (let [endpoint-key (first (keys path))
+          endpoint (path endpoint-key)]
+      {endpoint-key
+       (map (extract-method-form definitions) endpoint)})))
 
 (defn analyze-endpoints [swagger-json]
-  (let [paths (get-endpoints swagger-json)]
-    (reset! definitions (swagger-json "definitions"))
-    (map analyze-endpoint-methods paths)))
+  (let [paths (get-endpoints swagger-json)
+        definitions (swagger-json "definitions")]
+    (map (analyze-endpoint-methods definitions) paths)))
 
 (defn analyze-swagger-handler [request]
   (let [swagger-json (request :body)]
     (->
      (http-response/ok (analyze-endpoints swagger-json))
-     (http-response/header "Content-Type" "text/plain; charset=utf-8"))))
+     (http-response/header "Content-Type" "application/json"))))
 
 (defn swagger-routes []
   ["/swagger"
