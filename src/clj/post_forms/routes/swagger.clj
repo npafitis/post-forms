@@ -1,6 +1,7 @@
 (ns post-forms.routes.swagger
   (:require [post-forms.middleware :as middleware]
-            [post-forms.utils :refer [map-to-vector]]
+            [post-forms.utils :refer [map-to-vector
+                                      flatten-one-level]]
             [ring.util.request :refer [body-string]]
             [ring.util.response :refer [response]]
             [ring.util.http-response :as http-response]
@@ -25,6 +26,9 @@
 
 (defn get-endpoints [swagger-json]
   (map-to-vector (swagger-json "paths")))
+
+(def basic-body-form-field
+  {:json {:label "Body"}})
 
 (defn basic-parameter-field [parameter name]
   (let [type (parameter "type")
@@ -66,17 +70,16 @@
   (let [properties (map-to-vector (class "properties"))]
     (map (extract-property-field visited-classes) properties)))
 
-(def basic-body-form-field
-  {:json {:label "Body"}})
-
 (defn extract-parameter-field [parameter]
   (if (contains? parameter "schema")
     (if (contains? (parameter "schema") "$ref")
       (let [classname (get-definition-name (parameter "schema"))
             class (@definitions classname)]
-        (advanced-form-field class '()))
+        {classname
+         (advanced-form-field class '())})
       basic-body-form-field)
-    (basic-parameter-field parameter (parameter "name"))))
+    {(parameter "name")
+     (basic-parameter-field parameter (parameter "name"))}))
 
 (defn extract-method-form [method]
   (let [method-key (key method)
@@ -90,7 +93,8 @@
       :body (->>
              parameters
              (filter body?)
-             (map extract-parameter-field))}}))
+             (map extract-parameter-field)
+             (flatten-one-level))}}))
 
 (defn analyze-endpoint-methods [path]
   (let [endpoint-key (first (keys path)) ;; endpoint-key is the string of the endpoint e.g "/foo/bar
