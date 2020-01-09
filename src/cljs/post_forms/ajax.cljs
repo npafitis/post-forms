@@ -30,6 +30,9 @@
                                :request default-headers})))
 
 (defn post-swagger-json [swagger-json handler]
+  (prn (type {:a :bold}))
+  (prn (type swagger-json))
   (ajax/POST "/swagger/analyze"
-             {:body swagger-json
+             {:format :json
+              :params swagger-json
               :handler handler}))

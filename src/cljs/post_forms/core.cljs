@@ -107,7 +107,9 @@
 
 (defn on-swagger-json-change [editor swagger-json]
   (ajax/post-swagger-json
-   (reset! swagger-json (.getValue editor))
+   (let [json-string (reset! swagger-json (.getValue editor))
+         json (.parse js/JSON json-string)]
+     (js->clj json))
    (fn [response]
      (log response))))
 
