@@ -29,6 +29,11 @@
    (assoc db :selected-tab selected-tab)))
 
 (rf/reg-event-db
+ :form-representation
+ (fn [db [_ form-representation]]
+   (assoc db :form-representation form-representation)))
+
+(rf/reg-event-db
   :common/set-error
   (fn [db [_ error]]
     (assoc db :common/error error)))
@@ -60,6 +65,11 @@
  :selected-tab
  (fn [db _]
      (-> db :selected-tab)))
+
+(rf/reg-sub
+ :form-representation
+ (fn [db _]
+   (-> db :form-representation)))
 
 (defn log [& args]
   (.apply js/console.log js/console (to-array args)))

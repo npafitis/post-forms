@@ -11,6 +11,8 @@
    [reitit.core :as reitit]
    [re-com.core :as re-com]
    [cljsjs.codemirror :as cm]
+   [post-forms.forms :as forms]
+   [post-forms.utils :refer [log]]
    [clojure.string :as string])
   (:import [goog.async Debouncer]
            goog.History))
@@ -80,11 +82,8 @@
                            :on-change change-tab]
                           [(left-panel-tabs @selected-tab-id)]]]])))
 
-(defn forms-view []
-  (fn []
-    [:div "Forms View"]))
-
-
+(defn forms-panel []
+  [(forms/forms-view)])
 
 (defn swagger-view []
   (let [swagger-json (r/atom "{\"place\": \"holder\"}")]
@@ -111,7 +110,9 @@
          json (.parse js/JSON json-string)]
      (js->clj json))
    (fn [response]
-     (log response))))
+     (log (type response))
+     (log (count response))
+     (rf/dispatch [:form-representation response]))))
 
 ;; -------------------------
 ;; Functionality
@@ -125,9 +126,6 @@
   (let [dbnc (Debouncer. f interval)]
     (fn [& args] (.apply (.-fire dbnc) dbnc (to-array args)))))
 
-(defn log [& args]
-  (.apply js/console.log js/console (to-array args)))
-
 (def pages
   {:home #'home-page
    :about #'about-page
@@ -135,7 +133,7 @@
 
 (def left-panel-tabs
   {::swagger #'swagger-view
-   ::forms #'forms-view})
+   ::forms #'forms-panel})
 
 (def left-panel-tabs-definition
   [{:id ::forms
