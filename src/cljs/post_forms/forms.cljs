@@ -16,7 +16,18 @@
 (defn forms-view-content [form-representation]
   (fn []
     [:div
-     [:h2 "Form View"]]))
+     [:h2 "Form View"]
+     (map extract-endpoint-view form-representation)]))
 
+(defn extract-endpoint-view [endpoint-representation]
+  (let [endpoint-name (endpoint-representation "endpoint")
+        methods (endpoint-representation "methods")]
+    [:div
+     [:h3 endpoint-name]
+     (map extract-method-view methods)]))
+
+(defn extract-method-view [method-representation]
+  (let [method-name (method-representation "method")]
+    [:div [:h5 method-name]]))
 
 
