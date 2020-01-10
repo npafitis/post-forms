@@ -29,5 +29,3 @@
 (defn extract-method-view [method-representation]
   (let [method-name (method-representation "method")]
     [:div [:h5 method-name]]))
-
-
