@@ -32,19 +32,15 @@
   (let [type (parameter "type")
         required (parameter "required")]
     ({"boolean" {:checkbox
-                 {:label name
-                  :required required}}
+                 {:required required}}
       "string" (if (contains? parameter "enum")
                  {:dropdown
-                  {:label name
-                   :required required
+                  {:required required
                    :options (parameter "enum")}}
                  {:input-text
-                  {:label name
-                   :required required}})
+                  {:required required}})
       "integer" {:input-text
-                 {:label name
-                  :required required
+                 {:required required
                   :validation-regex  "\\d+"}}}
      type)))
 
@@ -56,17 +52,20 @@
         (let [classname (get-definition-name property-value)
               class (definitions classname)]
           (if (not (some #(= classname %) visited-classes))
-            (advanced-form-field class (conj
-                                        visited-classes
-                                        classname) definitions)
+            (advanced-form-field class classname
+                                 (conj
+                                  visited-classes
+                                  classname) definitions)
             {property-name {:ref classname}}))
         (if (contains? property-value "type")
-          (basic-parameter-field property-value property-name)
+          {:param-name property-name
+           :param-structure (basic-parameter-field property-value property-name)}
           nil)))))
 
-(defn advanced-form-field [class visited-classes definitions]
+(defn advanced-form-field [class classname visited-classes definitions]
   (let [properties (map-to-vector (class "properties"))]
-    (map (extract-property-field visited-classes definitions) properties)))
+    {:classname classname
+     :class-structure (map (extract-property-field visited-classes definitions) properties)}))
 
 (defn extract-parameter-field [definitions]
   (fn [parameter]
@@ -74,34 +73,33 @@
       (if (contains? (parameter "schema") "$ref")
         (let [classname (get-definition-name (parameter "schema"))
               class (definitions classname)]
-          {classname
-           (advanced-form-field class '() definitions)})
+          (advanced-form-field class classname '() definitions))
         basic-body-form-field)
-      {(parameter "name")
-       (basic-parameter-field parameter (parameter "name"))})))
+      {:param-name (parameter "name")
+       :param-structure (basic-parameter-field parameter (parameter "name"))})))
 
 (defn extract-method-form [definitions]
   (fn [method]
     (let [method-key (key method)
           method-val (val method)
           parameters (method-val "parameters")]
-      {method-key
-       {:query-params (->>
+      {:method method-key
+       :params {:query-params (->>
+                               parameters
+                               (filter query?)
+                               (map (extract-parameter-field definitions)))
+                :body (->>
                        parameters
-                       (filter query?)
-                       (map (extract-parameter-field definitions)))
-        :body (->>
-               parameters
-               (filter body?)
-               (map (extract-parameter-field definitions))
-               (flatten-one-level))}})))
+                       (filter body?)
+                       (map (extract-parameter-field definitions))
+                       (flatten-one-level))}})))
 
 (defn analyze-endpoint-methods [definitions]
   (fn [path]
     (let [endpoint-key (first (keys path))
           endpoint (path endpoint-key)]
-      {endpoint-key
-       (map (extract-method-form definitions) endpoint)})))
+      {:endpoint endpoint-key
+       :methods (map (extract-method-form definitions) endpoint)})))
 
 (defn analyze-endpoints [swagger-json]
   (let [paths (get-endpoints swagger-json)
